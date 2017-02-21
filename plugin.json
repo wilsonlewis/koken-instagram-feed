@@ -1,0 +1,10 @@
+{
+	"name": "Instagram Feed",
+	"version": "1.0.0",
+	"description": "Get Instagram recent photos feed.",
+    "documentation": "https://github.com/wilsonlewis/koken-instagram-feed",
+	"author": {
+		"name": "Wilson Lewis",
+		"link": "https://github.com/wilsonlewis"
+	}
+}
