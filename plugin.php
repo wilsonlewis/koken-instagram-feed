@@ -2,83 +2,189 @@
 
 class InstagramFeedPlugin extends KokenPlugin
 {
-	function __construct()
-	{
-        $this->register_hook('before_closing_head', 'instagram_css');
-		$this->register_filter('site.output', 'instagram');
-	}
+    /**
+     * Template for rendering a full Instagram feed.
+     *
+     * @var string
+     */
+    protected $feedTemplate;
 
-    public function instagram_css() {
-        echo '<style>
-            .k-instagram-images {
-                width: 100%;
-                display: flex;
-            }
+    /**
+     * Template for rendering an Instagram image.
+     *
+     * @var string
+     */
+    protected $imageTemplate;
 
-            .k-instagram-images > * {
-                flex: 1;
-            }
+    /**
+     * A pattern to find and replace 'instagram' tags.
+     *
+     * @var string
+     */
+    protected $instagramTag;
 
-            .k-instagram-images > * + * {
-                margin-left: 4px;
-            }
+    /**
+     * Create a new Instagram Feed Plugin instance.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        $this->feedTemplate = file_get_contents(__DIR__.'/assets/views/feed.html');
 
-            .k-instagram-image {
-                display: block;
-                position: relative;
-                padding-top: 100%;
-            }
+        $this->imageTemplate = file_get_contents(__DIR__.'/assets/views/image.html');
 
-            .k-instagram-image img {
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                width: 100%;
-                height: 100%;
-                display: block;
-                position: absolute;
-                max-width: 100%
-            }
-        </style>';
+        $this->instagramTag = '/<(\s*?)instagram(.*?)>(.*?)<(\s*?)\/instagram(\s*?)>/';
+
+        $this->register_hook('before_closing_head', 'insertInstagramStyles');
+        
+        $this->register_filter('site.output', 'insertInstagramFeed');
     }
 
-	public function instagram($content)
+    /**
+     * Append default styles to the <head> tag.
+     *
+     * @return void
+     */
+    public function insertInstagramStyles()
     {
-        return preg_replace_callback(
-            '/<(\s*?)instagram(.*?)>(.*?)<(\s*?)\/instagram(\s*?)>/',
-            function($matches) {
-                $tags = $matches[2];
-                $user = str_replace(' ', '', preg_replace('/user="(.*?)"/', '$1', $tags));
-                $feed = json_decode(file_get_contents('https://www.instagram.com/'.$user.'/media/'), true);
-                $images = $feed['items'];
-                $elements = '';
-                $index = 0;
+        echo '<style>'.file_get_contents(__DIR__.'/assets/css/main.css').'</style>';
+    }
 
-                foreach ($images as $image) {
-                    if ($index == 6) {
-                        break;
-                    }
+    /**
+     * Replace any 'instagram' tags found in a page before it is rendered.
+     *
+     * @see   $this->replaceInstagramTag()
+     *
+     * @param  string $content
+     *
+     * @return string
+     */
+    public function insertInstagramFeed($content)
+    {
+        return preg_replace_callback($this->instagramTag, array($this, 'replaceInstagramTag'), $content);
+    }
 
-                    $elements .= '
-                        <div>
-                            <a class="k-instagram-image" href="'.$image['link'].'" target="_blank">
-                                <img src="'.$image['images']['thumbnail']['url'].'" alt="'.$image['caption']['text'].'">
-                            </a>
-                        </div>';
+    /**
+     * Replaces any 'instagram' tag found in html markup with a feed of most recent images.
+     *
+     * Example: '<instagram username="name" count="4"></instagram>'
+     *
+     * @param  array $matches
+     *
+     * @return string
+     */
+    protected function replaceInstagramTag($matches)
+    {
+        $attributes = (new SimpleXMLElement('<element '.$matches[2].' />'))->attributes();
+        
+        if ($feed = $this->getFeedForUsername($attributes['username'])) {
+            return $this->createFeedTag($feed, $attributes['images']);
+        }
+        
+        return '';
+    }
 
-                    $index++;
-                }
+    /**
+     * Retrieves and converts a user's Instagram feed to an array.
+     *
+     * @param  string|null $username
+     *
+     * @return array|null
+     */
+    protected function getFeedForUsername($username = null)
+    {
+        if ($username = $username ?? $this->data->username) {
+            return json_decode(file_get_contents("https://www.instagram.com/{$username}/media/"), true);
+        }
+    }
 
-                return '<div class="k-instagram">
-                    <a class="k-instagram-title" href="https://www.instagram.com/'.$user.'">
-                        Instagram
-                    </a>
-                    <div class="k-instagram-images">'.
-                        $elements.'
-                    </div>
-                </div>';
-            },
-            $content);
-	}
+    /**
+     * Creates an html tag for using data from an Instagram feed.
+     *
+     * @param  array $feed
+     * @param  integer $count
+     *
+     * @return string
+     */
+    protected function createFeedTag($feed, $count = null)
+    {
+        return $this->replaceTemplateVariables($this->feedTemplate, [
+            'images' => $this->createImageTags($feed['items'], $count),
+            'username' => $feed['items'][0]['user']['username'],
+        ]);
+    }
+
+    /**
+     * Creates multiple html tags using data from an Instagram feed.
+     *
+     * @see    $this->createImageTag()
+     *
+     * @param  array $images
+     * @param  integer $count
+     *
+     * @return string
+     */
+    protected function createImageTags($images, $count = null)
+    {
+        $images = array_slice($images, 0, $count ?: $this->data->count, true);
+
+        $imageViews = array_map(function ($image) {
+            return $this->createImageTag($image);
+        }, $images);
+
+        return join('', $imageViews);
+    }
+
+    /**
+     * Creates a html tag using data from an Instagram feed image.
+     *
+     * @param  array $image
+     *
+     * @return string
+     */
+    protected function createImageTag($image)
+    {
+        return $this->replaceTemplateVariables($this->imageTemplate, [
+            'src' => $image['images']['thumbnail']['url'],
+            'link' => $image['link'],
+            'title' => $image['caption']['text'],
+        ]);
+    }
+
+    /**
+     * Replaces multiple variables in a template with values.
+     *
+     * @see    $this->replaceTemplateVariable()
+     *
+     * @param  string $template
+     * @param  array $variables
+     *
+     * @return string
+     */
+    protected function replaceTemplateVariables($template, $variables)
+    {
+        foreach ($variables as $name => $value) {
+            $template = $this->replaceTemplateVariable($template, $name, $value);
+        }
+
+        return $template;
+    }
+
+    /**
+     * Replaces variables in a template with values using handlebar syntax.
+     *
+     * Example: 'Hello, {{ name }}!', 'name', 'world'
+     *
+     * Result: 'Hello, world!'
+     *
+     * @param  string $template
+     * @param  array $variables
+     *
+     * @return string
+     */
+    protected function replaceTemplateVariable($template, $name, $value)
+    {
+        return preg_replace('/\{\{(\s*?)'.$name.'(\s*?)\}\}/', $value, $template);
+    }
 }

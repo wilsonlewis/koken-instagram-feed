@@ -1,10 +1,23 @@
 {
 	"name": "Instagram Feed",
-	"version": "1.0.0",
-	"description": "Get Instagram recent photos feed.",
+	"version": "1.1.0",
+	"description": "Get an Instagram user's recent photos feed.",
     "documentation": "https://github.com/wilsonlewis/koken-instagram-feed",
 	"author": {
 		"name": "Wilson Lewis",
 		"link": "https://github.com/wilsonlewis"
-	}
+	},
+    "data": {
+        "username": {
+            "label": "Username",
+            "info": "The username for 'instagram' tags. Override an individual tag with the attribute 'username'.",
+            "type": "string"
+        },
+        "count": {
+            "label": "Image Count",
+            "info": "The number of images for each 'instagram' tag. Override an individual tag with the attribute 'count'.",
+            "type": "number",
+            "value": 6
+        }
+    }
 }

@@ -1,0 +1,30 @@
+.k-instagram-images {
+    width: 100%;
+    display: flex;
+}
+
+.k-instagram-images > * {
+    flex: 1;
+}
+
+.k-instagram-images > * + * {
+    margin-left: 4px;
+}
+
+.k-instagram-image {
+    display: block;
+    position: relative;
+    padding-top: 100%;
+}
+
+.k-instagram-image img {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    position: absolute;
+    max-width: 100%
+}
