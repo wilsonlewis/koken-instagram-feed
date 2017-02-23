@@ -94,7 +94,7 @@ class InstagramFeedPlugin extends KokenPlugin
      */
     protected function getFeedForUsername($username = null)
     {
-        if ($username = $username ?? $this->data->username) {
+        if ($username = $username ?: $this->data->username) {
             return json_decode(file_get_contents("https://www.instagram.com/{$username}/media/"), true);
         }
     }

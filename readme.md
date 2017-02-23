@@ -36,12 +36,12 @@ Koken does not have a store for 3rd party plugins, so we need to install it manu
 
 Add an image feed using an 'instagram' tag in an <a href="http://help.koken.me/customer/portal/articles/632095-text-overview">essay or custom page</a>.
 
-
         // using global settings
         <instagram></instagram>
         
         // using optional overrides
         <instagram username="user" images="4"></instagram>
+        
 It can also be used in any <a href="http://help.koken.me/customer/portal/articles/828688-lens-templates">.lens template</a>.
 
 ## Attributes (optional)
